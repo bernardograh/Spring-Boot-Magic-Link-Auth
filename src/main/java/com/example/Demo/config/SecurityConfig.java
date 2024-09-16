@@ -58,7 +58,7 @@ public class SecurityConfig {
     @Bean
     public InMemoryUserDetailsManager user() {
         return new InMemoryUserDetailsManager(
-                User.withUsername("benclanks")
+                User.withUsername("springauth67")
                         .password("{noop}password")
                         .authorities("read")
                         .build()
