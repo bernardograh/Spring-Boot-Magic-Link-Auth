@@ -21,22 +21,19 @@ public class JwtTokenProvider {
     @Value("${app.jwt-secret}")
     private String jwtSecret;
 
-    @Value("${app.jwt-expiration-milliseconds}")
-    private long jwtExpirationDate;
-
     // generate JWT token
     public String generateToken(Authentication authentication){
         String username = authentication.getName();
 
         Date currentDate = new Date();
-
-        Date expireDate = new Date(currentDate.getTime() + jwtExpirationDate);
+        long jwtExpirationMs = 300000; // 5 minutes in milliseconds
+        Date expireDate = new Date(currentDate.getTime() + jwtExpirationMs);
 
         return Jwts.builder()
                 .setSubject(username)
-                .setIssuedAt(new Date())
+                .setIssuedAt(currentDate)
                 .setExpiration(expireDate)
-                .signWith(key())
+                .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret)))
                 .compact();
     }
 
@@ -49,7 +46,7 @@ public class JwtTokenProvider {
     // get username from Jwt token
     public String getUsername(String token){
         Claims claims = Jwts.parserBuilder()
-                .setSigningKey(key())
+                .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret)))
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
@@ -57,12 +54,16 @@ public class JwtTokenProvider {
     }
 
     // validate Jwt token
-    public boolean validateToken(String token){
+    public boolean validateToken(String token) {
         try{
             Jwts.parserBuilder()
-                    .setSigningKey(key())
+                    .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret)))
                     .build()
-                    .parse(token);
+                    .parseClaimsJws(token)
+                    .getBody();
+
+            Date now = new Date();
+//            return !claims.getExpiration().before(now);
             return true;
         } catch (MalformedJwtException e) {
             logger.error("Invalid JWT token: {}", e.getMessage());
@@ -75,4 +76,24 @@ public class JwtTokenProvider {
         }
         return false;
     }
+
+
+//    public boolean validateToken(String token){
+//        try{
+//            Jwts.parserBuilder()
+//                    .setSigningKey(key())
+//                    .build()
+//                    .parse(token);
+//            return true;
+//        } catch (MalformedJwtException e) {
+//            logger.error("Invalid JWT token: {}", e.getMessage());
+//        } catch (ExpiredJwtException e) {
+//            logger.error("JWT token is expired: {}", e.getMessage());
+//        } catch (UnsupportedJwtException e) {
+//            logger.error("JWT token is unsupported: {}", e.getMessage());
+//        } catch (IllegalArgumentException e) {
+//            logger.error("JWT claims string is empty: {}", e.getMessage());
+//        }
+//        return false;
+//    }
 }
